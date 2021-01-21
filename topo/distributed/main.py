@@ -88,20 +88,9 @@ def cli(topos: List, config: Dict, scheduler: Scheduler2):
 		os.system("clear")
 		try:
 			print("> Available commands:\n"
-			      "> 0.set up local switch\n"
-			      "> 1.start topo scheduler\n"
-			      "> 2.stop topo scheduler\n"
-			      "> 3.start telemetry\n"
-			      "> 4.stop telemetry\n"
-			      "> 5.start traffic scheduler\n"
-			      "> 6.stop traffic scheduler\n"
-			      "> 7.quit\n"
-			      "> 8.set up first topo\n"
-			      "> 9.set up supplementary topo\n"
-			      "> 10.(experimental) start traffic actor\n"
-			      "> 11.(experimental) stop traffic actor\n"
-			      "> 12. start classifier demo\n"
-			      "> 13. stop classifier demo\n"
+			      "> 1.set up local switch\n"
+			      "> 2.set up switch links\n"
+				  "> 3.quit\n"
 			      "> Press Enter to print this msg")
 
 			command = input(">Input commands:\n").strip()
@@ -113,18 +102,18 @@ def cli(topos: List, config: Dict, scheduler: Scheduler2):
 				continue
 
 			command = int(command)
-			if command==12:
-				for idx,ip in enumerate(config["manage_ip"]):
-					url="http://{}:{}/classifier".format(ip,5000)
-					start_new_thread_and_run(do_post,[url,{"data":"nothing"}])
-					continue
-			if command==13:
-				for idx,ip in enumerate(config["manage_ip"]):
-					url="http://{}:{}/classifier".format(ip,5000)
-					start_new_thread_and_run(do_delete,[url])
-					continue
+			# if command==12:
+			# 	for idx,ip in enumerate(config["manage_ip"]):
+			# 		url="http://{}:{}/classifier".format(ip,5000)
+			# 		start_new_thread_and_run(do_post,[url,{"data":"nothing"}])
+			# 		continue
+			# if command==13:
+			# 	for idx,ip in enumerate(config["manage_ip"]):
+			# 		url="http://{}:{}/classifier".format(ip,5000)
+			# 		start_new_thread_and_run(do_delete,[url])
+			# 		continue
 
-			if command == 0:
+			if command == 1:
 				intfs = config["workers_intf"]
 				# set up local switch
 				for idx, ip in enumerate(config["manage_ip"]):
@@ -135,45 +124,45 @@ def cli(topos: List, config: Dict, scheduler: Scheduler2):
 				# threading.Thread(target=do_post, args=[url, {"config": config, "id": idx,
 				#                                             "intf": intf}]).start()
 				continue
-			if command == 8:
+			if command == 2:
 				for idx, ip in enumerate(config["manage_ip"]):
 					url = "http://{}:{}/topo".format(ip, 5000)
 					# threading.Thread(target=do_post, args=[url, {"topo": topos[0]["topo"]}]).start()
 					start_new_thread_and_run(do_post, [url, {"topo": topos[0]["topo"]}])
 				continue
 
-			if command == 1:
-				debug("Topo scheduler started")
-				scheduler.start()
-				continue
+			# if command == 1:
+			# 	debug("Topo scheduler started")
+			# 	scheduler.start()
+			# 	continue
 
-			if command == 2:
-				debug("Topo scheduler stoped")
-				scheduler.stop()
-				continue
+			# if command == 2:
+			# 	debug("Topo scheduler stoped")
+			# 	scheduler.stop()
+			# 	continue
+
+			# if command == 3:
+			# 	debug("Start telemetry")
+			# 	for idx, ip in enumerate(config["manage_ip"]):
+			# 		url = "http://{}:{}/telemetry".format(ip, 5000)
+			# 		start_new_thread_and_run(do_post, [url, {}])
+			# 	continue
+
+			# if command == 5:
+			# 	for idx, ip in enumerate(config["manage_ip"]):
+			# 		url = "http://{}:{}/traffic".format(ip, 5000)
+			# 		# threading.Thread(target=do_post, args=[url, {}]).start()
+			# 		start_new_thread_and_run(do_post, [url, {}])
+			# 		continue
+
+			# if command == 6:
+			# 	for idx, ip in enumerate(config["manage_ip"]):
+			# 		url = "http://{}:{}/traffic".format(ip, 5000)
+			# 		# threading.Thread(target=do_delete, args=[url]).start()
+			# 		start_new_thread_and_run(do_delete, [url])
+			# 		continue
 
 			if command == 3:
-				debug("Start telemetry")
-				for idx, ip in enumerate(config["manage_ip"]):
-					url = "http://{}:{}/telemetry".format(ip, 5000)
-					start_new_thread_and_run(do_post, [url, {}])
-				continue
-
-			if command == 5:
-				for idx, ip in enumerate(config["manage_ip"]):
-					url = "http://{}:{}/traffic".format(ip, 5000)
-					# threading.Thread(target=do_post, args=[url, {}]).start()
-					start_new_thread_and_run(do_post, [url, {}])
-					continue
-
-			if command == 6:
-				for idx, ip in enumerate(config["manage_ip"]):
-					url = "http://{}:{}/traffic".format(ip, 5000)
-					# threading.Thread(target=do_delete, args=[url]).start()
-					start_new_thread_and_run(do_delete, [url])
-					continue
-
-			if command == 7:
 				scheduler.stop()
 				global traffictimer
 				traffictimer.stop()
@@ -183,25 +172,25 @@ def cli(topos: List, config: Dict, scheduler: Scheduler2):
 					start_new_thread_and_run(do_delete, [url])
 				# threading.Thread(target=do_delete, args=[url]).start()
 				continue
-			if command == 9:
-				worker_ips = config["manage_ip"]
-				# set up server access point
-				url1 = "http://{}:{}/supplementary".format(worker_ips[0], 5000)
-				start_new_thread_and_run(do_post, [url1, {"server": True}])
-				# threading.Thread(target=do_post, args=[url1, {"server": True}]).start()
+			# if command == 9:
+			# 	worker_ips = config["manage_ip"]
+			# 	# set up server access point
+			# 	url1 = "http://{}:{}/supplementary".format(worker_ips[0], 5000)
+			# 	start_new_thread_and_run(do_post, [url1, {"server": True}])
+			# 	# threading.Thread(target=do_post, args=[url1, {"server": True}]).start()
 
-				url2 = "http://{}:{}/supplementary".format(worker_ips[0], 5000)
-				# threading.Thread(target=do_post, args=[url2, {"server": False}]).start()
-				start_new_thread_and_run(do_post, [url2, {"server": False}])
-				continue
+			# 	url2 = "http://{}:{}/supplementary".format(worker_ips[0], 5000)
+			# 	# threading.Thread(target=do_post, args=[url2, {"server": False}]).start()
+			# 	start_new_thread_and_run(do_post, [url2, {"server": False}])
+			# 	continue
 
-			if command == 10:
-				traffictimer.start()
-				continue
+			# if command == 10:
+			# 	traffictimer.start()
+			# 	continue
 
-			if command == 11:
-				traffictimer.stop()
-				continue
+			# if command == 11:
+			# 	traffictimer.stop()
+			# 	continue
 
 		except KeyboardInterrupt:
 			# print(">Preparing quit. Clean up")

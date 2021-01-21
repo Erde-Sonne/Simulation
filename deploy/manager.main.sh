@@ -8,35 +8,17 @@ clear;
 echo $root_dir
 echo ">Enter project":
 echo ">0. Demo"
-echo ">1. Satellite"
-echo ">2. Telemetry"
-echo ">3. Military"
-echo ">4. Rate"
+echo ">1. AC"
 read prj
 echo "Project ${prj}"
 
 
-if [[ $prj -eq 1 ]]
-then
-  python ./topo/distributed/main.py \
-  --config "${root_dir}/static/satellite.config.json" \
-  --topos_fn "${root_dir}/static/satellite_overall.pkl"
-elif [[ $prj -eq 2 ]]
-then
-   python ./topo/distributed/main.py \
-  --config "${root_dir}/topo/distributed/telemetry.config.json" \
-  --topos_fn "${root_dir}/static/satellite_overall.pkl"
-elif [[ $prj -eq 3 ]]
-then
-       python ./topo/distributed/main.py \
-  --config "${root_dir}/static/military.config.json" \
-  --topos_fn "${root_dir}/static/military.pkl"
-elif [[ $prj -eq 4 ]]
+if [[ $prj -eq 0 ]]
 then
       python ./topo/distributed/main.py \
-  --config "${root_dir}/topo/distributed/rate.config.json" \
-  --topos_fn "${root_dir}/static/satellite_overall.pkl"
-elif [[ $prj -eq 0 ]]
+  --config "${root_dir}/static/military.config.json" \
+  --topos_fn "${root_dir}/static/militaryAC.pkl"
+elif [[ $prj -eq 1 ]]
 then
       python ./topo/distributed/main.py \
   --config "${root_dir}/static/demo.config.json" \

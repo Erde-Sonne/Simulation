@@ -5,12 +5,9 @@ keras
 matplotlib
 loguru
 dpkt
-sklearn
-scikit-learn
 fnss
 flask
 flask_restful
-tensorflow
 netifaces
 requests
 ovs
