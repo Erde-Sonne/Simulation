@@ -11,7 +11,7 @@ docker rm onos22
 rm -rf /tmp/data
 mkdir /tmp/data
 
-docker run -t -d -p 8181:8181 -p 8101:8101 -p 6666:6653 -p 1050:1050 -p 1051:1051 -p 5005:5005 -p 830:830 -p 7896:7896 -p 1054:1054 -v /tmp/data:/data --name onos22 onosproject/onos
+docker run -t -d -p 8181:8181 -p 8101:8101 -p 6666:6653 -p 1060:1060 -p 1050:1050 -p 1051:1051 -p 5005:5005 -p 830:830 -p 7896:7896 -p 1054:1054 -v /tmp/data:/data --name onos22 onosproject/onos
 
 echo "Sleep for 20 seconds"
 sleep 20
