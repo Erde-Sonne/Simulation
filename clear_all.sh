@@ -6,7 +6,7 @@ do
                 echo "$bridge" deleted
 done
 
-for hid in {0..99}
+for hid in {0..24}
 do
     ip netns del "h${hid}"
 done
@@ -23,9 +23,6 @@ done
 
 ip link del dev nat1
 ip link del dev nat2
-ip link del dev nat3
-ip link del dev nat4
-ip link del dev nat5
 
 iptables -P INPUT ACCEPT
 iptables -P FORWARD ACCEPT
@@ -40,4 +37,4 @@ pkill -f '^golisten$'
 pkill "ovs-tcpdump"
 pkill "tcpdump"
 
-# service docker restart
+#service docker restart

@@ -7,8 +7,8 @@ clear;
 
 echo $root_dir
 echo ">Enter project":
-echo ">0. Demo"
-echo ">1. AC"
+echo ">0. AC"
+echo ">1. Demo"
 read prj
 echo "Project ${prj}"
 

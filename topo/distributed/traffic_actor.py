@@ -32,6 +32,8 @@ class TrafficActor:
 		self.prev_mode = None
 		self.config = config
 
+		self.cnt = 0
+
 		self.generator_id = 0
 		self.genid2pid = {}
 		self.pid2genid = {}
@@ -39,7 +41,6 @@ class TrafficActor:
 			"iot": [],
 			"video": [],
 			"voip": [],
-			"ar": []
 		}
 		self.binary = self.config["traffic_generator"]
 
@@ -48,7 +49,7 @@ class TrafficActor:
 		self.durations = self.config["traffic_duration"]
 		assert len(self.traffic_scales) == len(self.durations)
 		# self.durations = [120, 120, 120, 120]
-		self.flow_types = ["video", "iot", "voip", "ar"]
+		self.flow_types = ["video", "iot", "voip"]
 
 		self.schedule_record = []
 		random.seed(int(time.time()))
@@ -58,8 +59,6 @@ class TrafficActor:
 
 	def _do_start_traffic(self, hid, flow_type) -> (int, int):
 		hostname = "h{}".format(hid)
-		rip = self.config["redis_ip"]
-		rport = self.config["redis_port"]
 		intf = "{}-eth0".format(hostname)
 		target_id_fn = os.path.join(target_id_dir, "{}.targetids".format(hostname))
 		gen_id = self.generator_id
@@ -68,20 +67,20 @@ class TrafficActor:
 		pkt_dir = self.config["traffic_dir"][flow_type]
 		ftype = -1
 		report = False
-		vlanId = 0
+		vlanid = -1
 		if flow_type == "video":
 			ftype = 0
-			vlanId = 0
-			report = True
+			# report=True
+			vlanid = 0
 		elif flow_type == "iot":
 			ftype = 1
-			vlanId = 1
+			vlanid = 1
 		elif flow_type == "voip":
 			ftype = 2
-			vlanId = 2
+			vlanid = 2
 		elif flow_type == "ar":
 			ftype = 3
-			vlanId = 3
+			vlanid = 3
 		else:
 			raise Exception("Unsupported flow type")
 
@@ -104,10 +103,7 @@ class TrafficActor:
 		         "--loss_dir {} " \
 		         "{} " \
 		         "{} " \
-		         "--storefcounter " \
-		         "--workers {} " \
-		         "--rip {} " \
-		         "--rport {}".format(
+		         "--workers {}".format(
 			hid,
 			target_id_fn,
 			pkt_dir,
@@ -119,10 +115,8 @@ class TrafficActor:
 			("--loss" if enable_loss else ""),
 			(loss_dir if enable_loss else ""),
 			("--report" if report else ""),
-			("{}".format("--vlan {}".format(vlanId) if not report else "")),
-			(16 if ftype == 1 else 1),
-			rip,
-			rport
+			("{}".format("--vlan {}".format(vlanid) if not report else "")),
+			1
 		)
 
 		commands = "{} {}".format(self.binary, params)
@@ -130,20 +124,17 @@ class TrafficActor:
 		enable_log = (int(self.config["enable_traffic_generator_log"]) == 1)
 		if enable_log:
 			# fp = open(log_fn, "w")
+			# pid = subprocess.Popen(commands.split(" "), stdout=fp, stderr=fp).pid
 			pid = run_ns_process_background(hostname, commands, output=log_fn)
-		# pid = subprocess.Popen(commands.split(" "), stdout=fp, stderr=fp).pid
 		else:
 			# /dev/null
-			# pid = subprocess.Popen(commands.split(
-			# 	" "), stdout=DEVNULL, stderr=DEVNULL).pid
+			# pid = subprocess.Popen(commands.split(" "), stdout=DEVNULL, stderr=DEVNULL).pid
 			pid = run_ns_process_background(hostname, commands)
 		return pid, self.generator_id
 
 	def _do_start_traffic_to_target(self, hid, target_id, flow_type) -> (int, int):
 		hostname = "h{}".format(hid)
 		intf = "{}-eth0".format(hostname)
-		rip = self.config["redis_ip"]
-		rport = self.config["redis_port"]
 		target_id_fn = os.path.join(target_id_dir, "{}.targetids".format(hostname))
 		gen_id = self.generator_id
 		self.generator_id += 1
@@ -151,20 +142,20 @@ class TrafficActor:
 		pkt_dir = self.config["traffic_dir"][flow_type]
 		ftype = -1
 		report = False
-		vlanId = 0
+		vlanid = -1
 		if flow_type == "video":
 			ftype = 0
-			report = True
-			vlanId = 0
+			# report=True
+			vlanid = 0
 		elif flow_type == "iot":
 			ftype = 1
-			vlanId = 1
+			vlanid = 1
 		elif flow_type == "voip":
 			ftype = 2
-			vlanId = 2
+			vlanid = 2
 		elif flow_type == "ar":
 			ftype = 3
-			vlanId = 3
+			vlanid = 3
 		else:
 			raise Exception("Unsupported flow type")
 
@@ -189,10 +180,7 @@ class TrafficActor:
 		         "--loss_dir {} " \
 		         "{} " \
 		         "{} " \
-		         "--storefcounter " \
-		         "--workers {} " \
-		         "--rip {} " \
-		         "--rport {}".format(
+		         "--workers {}".format(
 			hid,
 			target_id_fn,
 			pkt_dir,
@@ -205,10 +193,8 @@ class TrafficActor:
 			("--loss" if enable_loss else ""),
 			(loss_dir if enable_loss else ""),
 			("--report" if report else ""),
-			("{}".format("--vlan {}".format(vlanId)) if not report else ""),
-			(16 if ftype == 1 else 1),
-			rip,
-			rport
+			("{}".format("--vlan {}".format(vlanid) if not report else "")),
+			1,
 		)
 
 		commands = "{} {}".format(self.binary, params)
@@ -219,8 +205,7 @@ class TrafficActor:
 			pid = run_ns_process_background(hostname, commands, output=log_fn)
 		else:
 			# /dev/null
-			# pid = subprocess.Popen(commands.split(
-			# 	" "), stdout=DEVNULL, stderr=DEVNULL).pid
+			# pid = subprocess.Popen(commands.split(" "), stdout=DEVNULL, stderr=DEVNULL).pid
 			pid = run_ns_process_background(hostname, commands)
 
 		# pid = subprocess.Popen(commands.split(" "), stdout=DEVNULL, stderr=DEVNULL).pid
@@ -243,6 +228,17 @@ class TrafficActor:
 
 		if to_schedule:
 			self.schedule_record.append(pid)
+	
+	def _start_traffic_to_target_process(self, hid, target_id, flow_type, to_schedule=False,
+	                                  cnt_process=4):
+		for _ in range(cnt_process):
+			self._start_traffic_to_target(hid, target_id, flow_type, to_schedule)
+
+	def _start_traffic_to_target_list(self, hid, target_id_list, flow_type, to_schedule=False,
+	                                  cnt_process=4):
+		for target_id in target_id_list:
+			for _ in range(cnt_process):
+				self._start_traffic_to_target(hid, target_id, flow_type, to_schedule)
 
 	def _stop_traffic(self, pid, flow_type, to_schedule=True):
 		kill_pid(pid)
@@ -272,6 +268,7 @@ class TrafficActor:
 					for _ in range(self.config["num_process"][ft][0]):
 						for hid in self.hostids:
 							self._start_traffic(hid, ft)
+
 				debug("started {} process to form small flow".format(self.generator_id))
 				self.prev_mode = mode
 				return
@@ -280,40 +277,65 @@ class TrafficActor:
 				pass
 
 		# small-->large
-		target_n_host = None
-		n_hosts = len(self.hostids)
 		if self.prev_mode == "small":
 			if mode == "large":
-				target_n_host = math.ceil(n_hosts * 0.5)
+				debug("current mode:{}".format(self.cnt % 6 + 1))
+				if self.cnt % 6 == 0:
+					for hid in [7, 8, 9]:
+						if hid in self.hostids:
+							self._start_traffic_to_target_list(hid, [19, 20, 21, 31, 32, 33], "video",
+							                                   True)
+				if self.cnt % 6 == 1:
+					for hid in [7, 8, 9]:
+						if hid in self.hostids:
+							self._start_traffic_to_target_list(hid, [19, 20, 21, 31, 32, 33],
+							                                   "video", True)
+				if self.cnt % 6 == 2:
+					for hid in [7, 8, 9]:
+						if hid in self.hostids:
+							self._start_traffic_to_target_list(hid, [19, 20, 21, 31, 32, 33], "video",
+							                                   True)
+				if self.cnt % 6 == 3:
+					for hid in [7, 8, 9]:
+						if hid in self.hostids:
+							self._start_traffic_to_target_list(hid, [19, 20, 21, 31, 32, 33],
+							                                   "video", True)
+				if self.cnt % 6 == 4:
+					for hid in [0, 1, 2]:
+						if hid in self.hostids:
+							self._start_traffic_to_target_list(hid, [12, 13, 14, 24, 25, 26],
+							                                   "video", True)
+				if self.cnt % 6 == 5:
+					for hid in [0, 1, 2]:
+						if hid in self.hostids:
+							self._start_traffic_to_target_list(hid, [12, 13, 14, 24, 25, 26],
+							                                   "video", True)
 
+				self.cnt += 1
 		# large--->small
 		if self.prev_mode == "large":
 			if mode == "small":
-				target_n_host = 0
-
-		target_n_process = target_n_host * 15
-
-		if target_n_process > len(self.schedule_record):
-			n_add = target_n_process - len(self.schedule_record)
-			# sample host
-			# sampled_hosts = random.sample(self.hostids, n_add // 15)
-			n_sampled = n_add // 15
-			# 从start开始的某一段连续的主机,数量为n_sampled
-			start = random.sample(range(len(self.hostids) - n_sampled), 1)[0]
-			# debug("sampled host start from {}, number of hosts {}".format(start,n_sampled))
-			sampled_hosts = self.hostids[start:start + n_sampled]
-			for hid in sampled_hosts:
-				for _ in range(15):
-					self._start_traffic(hid, "video", True)
-
-		# we need to reduce generator
-		elif target_n_process < len(self.schedule_record):
-			to_be_killed = self.schedule_record[target_n_process:]
-			for pid in to_be_killed:
-				self._stop_traffic(pid, "video", True)
+				to_be_killed = self.schedule_record[:]
+				for pid in to_be_killed:
+					self._stop_traffic(pid, "video", True)
 
 		self.prev_mode = mode
 		debug("traffic actor act done")
+		debug("***********Now mode is {}***********".format(mode))
+
+	
+	def act1(self, configStr: str):
+		arr = configStr.split(',')
+		for item in arr:
+			t = item.split(':')
+			tmp = t[0].split('-')
+			src = tmp[0]
+			dst = tmp[1]
+			cnt = t[1]
+			self._start_traffic_to_target_process(int(src), int(dst), 'video', False, int(cnt))
+		debug("config traffic done*********")
+	
+		
 
 	def stop(self):
 		for pid in self.pid2genid.keys():
@@ -325,9 +347,10 @@ class TrafficActor:
 			"iot": [],
 			"video": [],
 			"voip": [],
-			"ar": [],
 		}
 		self.genid2pid = {}
 		self.pid2genid = {}
 		self.prev_mode = None
-		self.generator_id=0
+		self.generator_id = 0
+		self.schedule_record = []
+		self.cnt = 0

@@ -1,0 +1,2 @@
+TxStartTs TxEndTs #packets sip sport dip dport proto flowtype
+1627441298893 0 16 10.0.0.19 64353 10.0.0.8 26520 TCP 2

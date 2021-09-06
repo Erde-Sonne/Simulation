@@ -99,6 +99,7 @@ class Scheduler2:
 		ip = self.config["controller"].split(":")[0]
 		port = self.config["topo_port"]
 		obj = {"topo_idx": idx}
+		debug("************topo_idx:{}**********".format(idx))
 		try:
 			start_new_thread_and_run(send,(ip,port,json.dumps(obj)))
 		except Exception as e:
@@ -114,7 +115,7 @@ class Scheduler2:
 			self._do_diff_topo(topo)
 			self._report_topo_idx(ts_idx)
 			if not self.cv.wait(duration):
-				ts_idx = (ts_idx + 1) % 44
+				ts_idx = (ts_idx + 1) % 49
 				continue
 			else:
 				debug("Exit scheduler")

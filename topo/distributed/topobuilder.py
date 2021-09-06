@@ -5,20 +5,17 @@ from time import sleep
 from typing import List, Set, Dict, Tuple, Optional
 import hashlib
 from path_utils import get_prj_root
-from utils.log_utils import debug, info, err,warn
+from utils.log_utils import debug, info, err
 from topo.distributed.traffic_scheduler import TrafficScheduler, TrafficScheduler2
 import time
 from utils.file_utils import check_file, create_dir, del_dir, dir_exsit, load_pkl, load_json
 from topo.distributed.traffic_actor import TrafficActor
 import subprocess
-from utils.addr_utils import get_ipv4net_address
 from utils.file_utils import del_dir, create_dir
 from utils.process_utils import kill_pid
 from telemetry.telemeter import Telemeter
 from telemetry.base_telemeter import BaseTelemeter
 from collections import defaultdict
-from utils.process_utils import run_and_get_output
-from topo.distributed.classifier_scheduler import ClassifierScheduler
 
 tmp_dir = os.path.join(get_prj_root(), "topo/distributed/tmp")
 iptables_bk = os.path.join(tmp_dir, "iptables.bk")
@@ -485,8 +482,6 @@ class TopoBuilder:
 			"tc":{}
 		}
 
-		self.classifier_scheduler:ClassifierScheduler=ClassifierScheduler(self.config,self.hosts)
-
 	def _set_up_switches(self):
 		k = self.config["host_per_switch"]
 		k = int(k)
@@ -495,6 +490,9 @@ class TopoBuilder:
 		vhost_mtu = self.config["vhost_mtu"]
 		for sw_id in self.config["workers"][int(self.id)]:
 			add_ovs(sw_id, controller)
+			# 屏蔽
+			if sw_id in [20, 21, 22, 23, 24]:
+				continue
 			add_hosts_to_switches(sw_id, k, vhost_mtu, self.tcpdump, self.tcpdump_opts["filter"],
 			                      self.tcpdump_opts["base_dir"])
 			for hostidx in range(k):
@@ -597,7 +595,8 @@ class TopoBuilder:
 				reverse_link = "s{}-s{}".format(sb_id, sa_id)
 
 				if -1 not in new_topo[sa_id][sb_id]:
-					rate, delay, loss, _ = new_topo[sa_id][sb_id]
+					# rate, delay, loss, _ = new_topo[sa_id][sb_id]
+					rate, delay, loss, _ = [100, 5, 10, 0]
 					rate = rate if int(self.config["enable_rate_constraint"]) == 1 else None
 					delay = delay if int(
 						self.config["enable_delay_constraint"]) == 1 else None
@@ -605,36 +604,34 @@ class TopoBuilder:
 					new_links.add(link)
 					new_links.add(reverse_link)
 					if link not in self.local_links:
-					
 						# 如果主机还没有发现（启动ping），说明是第一次建立拓扑，那么就不应该设置链路qos,等第一次建立topo以后
 						# 然后设置ping
-						# if not self.host_found:
-						connect_local_switches(sa_id,sb_id)
-						# 	self.vars["tc"][reverse_link]=(rate,delay,loss)
-						# 	self.vars["tc"][link]=(rate,delay,loss)
-						# else:
-						# 	connect_local_switches_with_tc(sa_id, sb_id, rate, delay, loss)
+						if not self.host_found:
+							connect_local_switches(sa_id,sb_id)
+							self.vars["tc"][reverse_link]=(rate,delay,loss)
+							self.vars["tc"][link]=(rate,delay,loss)
+						else:
+							connect_local_switches_with_tc(sa_id, sb_id, rate, delay, loss)
 						# todo 在拓扑变换的时候，可能覆盖掉之前抓取的包
-						# if self.tcpdump:
-						# 	# sleep(0.5)
-						# 	fn = os.path.join(self.tcpdump_opts["base_dir"], "{}.pcap".format(link))
-						# 	self.tcpdump_pids[link] = ovs_port_dump(link,
-						# 	                                        self.tcpdump_opts["filter"], fn)
-						# 	# sleep(0.2)
-						# 	fn = os.path.join(self.tcpdump_opts["base_dir"],
-						# 	                  "{}.pcap".format(reverse_link))
-						# 	self.tcpdump_pids[reverse_link] = ovs_port_dump(reverse_link,
-						# 	                                                self.tcpdump_opts[
-						# 		                                                "filter"], fn)
+						if self.tcpdump:
+							# sleep(0.5)
+							fn = os.path.join(self.tcpdump_opts["base_dir"], "{}.pcap".format(link))
+							self.tcpdump_pids[link] = ovs_port_dump(link,
+							                                        self.tcpdump_opts["filter"], fn)
+							# sleep(0.2)
+							fn = os.path.join(self.tcpdump_opts["base_dir"],
+							                  "{}.pcap".format(reverse_link))
+							self.tcpdump_pids[reverse_link] = ovs_port_dump(reverse_link,
+							                                                self.tcpdump_opts[
+								                                                "filter"], fn)
 
 					else:
-						pass
 						# exists in previous local links,
 						# change tc
 						# del_tc(link)
 						# del_tc(reverse_link)
-						# change_tc(link, delay, rate, loss)
-						# change_tc(reverse_link, delay, rate, loss)
+						change_tc(link, delay, rate, loss)
+						change_tc(reverse_link, delay, rate, loss)
 				else:
 					# link is None
 					if link in self.local_links:
@@ -654,32 +651,32 @@ class TopoBuilder:
 	def _diff_gre_links(self, new_topo: List[List[Tuple]]):
 		gre_mtu = self.config["gre_mtu"]
 		debug("Setting up gre links")
-		# new_gres = set()
-		# local_sw_ids = [int(x) for x in self.local_switch_ids]
-		# remote_sw_ids = [int(x) for x in self.remote_switches.keys()]
+		new_gres = set()
+		local_sw_ids = [int(x) for x in self.local_switch_ids]
+		remote_sw_ids = [int(x) for x in self.remote_switches.keys()]
 
-		# # # calculate all gre setup
-		# n_workers=len(self.config["workers"])
-		# debug("#workers {}".format(n_workers))
+		# # calculate all gre setup
+		n_workers=len(self.config["workers"])
+		debug("#workers {}".format(n_workers))
 
-		# # collect all  switch id to worker_id
-		# swid_to_worker_id={}
-		# for worker_id in range(n_workers):
-		# 	for sid in self.config["workers"][worker_id]:
-		# 		swid_to_worker_id[sid]=worker_id
+		# collect all  switch id to worker_id
+		swid_to_worker_id={}
+		for worker_id in range(n_workers):
+			for sid in self.config["workers"][worker_id]:
+				swid_to_worker_id[sid]=worker_id
 
-		# worker_id_to_gre=defaultdict(lambda :[])
-		# for said in range(len(new_topo)):
-		# 	for sbid in range(len(new_topo[0])):
-		# 		if said>=sbid:continue
-		# 		if -1 in new_topo[said][sbid]:continue
-		# 		if swid_to_worker_id[said]==swid_to_worker_id[sbid]:continue
-		# 		# now we find grep
-		# 		#said<sbid
-		# 		gre="s{}-s{}".format(said,sbid)
-		# 		# reverse_gre="s{}-s{}".format(sbid,said)
-		# 		worker_id_to_gre[swid_to_worker_id[said]].append(gre)
-		# 		worker_id_to_gre[swid_to_worker_id[sbid]].append(gre)
+		worker_id_to_gre=defaultdict(lambda :[])
+		for said in range(len(new_topo)):
+			for sbid in range(len(new_topo[0])):
+				if said>=sbid:continue
+				if -1 in new_topo[said][sbid]:continue
+				if swid_to_worker_id[said]==swid_to_worker_id[sbid]:continue
+				# now we find grep
+				#said<sbid
+				gre="s{}-s{}".format(said,sbid)
+				# reverse_gre="s{}-s{}".format(sbid,said)
+				worker_id_to_gre[swid_to_worker_id[said]].append(gre)
+				worker_id_to_gre[swid_to_worker_id[sbid]].append(gre)
 
 		# map gre to worker id
 		# map gre to local ip
@@ -692,121 +689,105 @@ class TopoBuilder:
 		确定localip
 		对于一个worker来说，只要按顺序选择localip,然后选择对应的localip就行了
 		'''
-		# gre_to_local_ip=[defaultdict(lambda :None) for _ in range(n_workers)]
-		# for worker_id in range(n_workers):
-		# 	worker_id_to_gre[worker_id].sort()
-		# 	content=gre_to_local_ip[worker_id]
-		# 	local_ips = self.config["workers_ip"][worker_id]
-		# 	for idx,gre in enumerate(worker_id_to_gre[worker_id]):
-		# 		n_local_ips=len(local_ips)
-		# 		ip=local_ips[idx%n_local_ips]
-		# 		content[gre]=ip
-		# 		reverse_gre=gre.split("-")[1]+"-"+gre.split("-")[0]
-		# 		content[reverse_gre]=ip
+		gre_to_local_ip=[defaultdict(lambda :None) for _ in range(n_workers)]
+		for worker_id in range(n_workers):
+			worker_id_to_gre[worker_id].sort()
+			content=gre_to_local_ip[worker_id]
+			local_ips = self.config["workers_ip"][worker_id]
+			for idx,gre in enumerate(worker_id_to_gre[worker_id]):
+				n_local_ips=len(local_ips)
+				ip=local_ips[idx%n_local_ips]
+				content[gre]=ip
+				reverse_gre=gre.split("-")[1]+"-"+gre.split("-")[0]
+				content[reverse_gre]=ip
 
-		# for sa_id in local_sw_ids:
-		# 	sa_worker_id=swid_to_worker_id[sa_id]
-		# 	for sb_id in remote_sw_ids:
-		# 		sb_worker_id=swid_to_worker_id[sb_id]
-		# 		key = self._get_gre_key(sa_id, sb_id)
-		# 		gretap = "s{}-s{}".format(sa_id, sb_id)
+		for sa_id in local_sw_ids:
+			sa_worker_id=swid_to_worker_id[sa_id]
+			for sb_id in remote_sw_ids:
+				sb_worker_id=swid_to_worker_id[sb_id]
+				key = self._get_gre_key(sa_id, sb_id)
+				gretap = "s{}-s{}".format(sa_id, sb_id)
 
-		# 		# local_ip = self.ip
-		# 		# # mapping from worker id to remote ip
-		# 		# remote_ip = self.remote_ips[int(self.remote_switches[sb_id])]
+				# local_ip = self.ip
+				# # mapping from worker id to remote ip
+				# remote_ip = self.remote_ips[int(self.remote_switches[sb_id])]
 
-		# 		if -1 in new_topo[sa_id][sb_id]:
-		# 			if gretap in self.gres:
-		# 				if gretap in self.tcpdump_pids.keys():
-		# 					kill_pid(self.tcpdump_pids[gretap])
-		# 				# take down gre
-		# 				down_interface(gretap)
-		# 				detach_interface_from_sw("s{}".format(sa_id), gretap)
-		# 				del_tc(gretap)
-		# 				del_interface(gretap)
+				if -1 in new_topo[sa_id][sb_id]:
+					if gretap in self.gres:
+						if gretap in self.tcpdump_pids.keys():
+							kill_pid(self.tcpdump_pids[gretap])
+						# take down gre
+						down_interface(gretap)
+						detach_interface_from_sw("s{}".format(sa_id), gretap)
+						del_tc(gretap)
+						del_interface(gretap)
 
-		# 		else:
-		# 			local_ip=gre_to_local_ip[sa_worker_id][gretap]
-		# 			remote_ip=gre_to_local_ip[sb_worker_id][gretap]
-		# 			debug("gre link {} local ip {} remote ip {}".format(gretap,local_ip,remote_ip))
-		# 			# debug("setting up gre {}".format(gretap))
-		# 			rate, delay, loss, _ = new_topo[sa_id][sb_id]
-		# 			rate = rate if int(self.config["enable_rate_constraint"]) == 1 else None
-		# 			delay = delay if int(
-		# 				self.config["enable_delay_constraint"]) == 1 else None
-		# 			loss = loss if int(self.config["enable_loss_constraint"]) == 1 else None
-		# 			# debug("bandwidth:{};delay:{}".format(rate,delay))
-		# 			new_gres.add(gretap)
-		# 			if gretap in self.gres:
-		# 				# del tc
-		# 				change_tc(gretap, delay, rate, loss)
-		# 			else:
-		# 				# set up gre
-		# 				if not self.host_found:
-		# 					self.vars["tc"][gretap]=(rate,delay,loss)
-		# 					connect_non_local_switches(sa_id,local_ip,sb_id,remote_ip,key,gre_mtu)
-		# 				else:
-		# 					connect_non_local_switches_with_tc(sa_id, local_ip, sb_id, remote_ip, key, rate,
-		# 				                                   delay, loss, gre_mtu)
-		# 				if self.tcpdump:
-		# 					# sleep(0.5)
-		# 					fn = os.path.join(self.tcpdump_opts["base_dir"],
-		# 					                  "{}.pcap".format(gretap))
-		# 					self.tcpdump_pids[gretap] = ovs_port_dump(
-		# 						gretap, self.tcpdump_opts["filter"], fn)
+				else:
+					local_ip=gre_to_local_ip[sa_worker_id][gretap]
+					remote_ip=gre_to_local_ip[sb_worker_id][gretap]
+					debug("gre link {} local ip {} remote ip {}".format(gretap,local_ip,remote_ip))
+					# debug("setting up gre {}".format(gretap))
+					rate, delay, loss, _ = new_topo[sa_id][sb_id]
+					rate = rate if int(self.config["enable_rate_constraint"]) == 1 else None
+					delay = delay if int(
+						self.config["enable_delay_constraint"]) == 1 else None
+					loss = loss if int(self.config["enable_loss_constraint"]) == 1 else None
+					# debug("bandwidth:{};delay:{}".format(rate,delay))
+					new_gres.add(gretap)
+					if gretap in self.gres:
+						# del tc
+						change_tc(gretap, delay, rate, loss)
+					else:
+						# set up gre
+						if not self.host_found:
+							self.vars["tc"][gretap]=(rate,delay,loss)
+							connect_non_local_switches(sa_id,local_ip,sb_id,remote_ip,key,gre_mtu)
+						else:
+							connect_non_local_switches_with_tc(sa_id, local_ip, sb_id, remote_ip, key, rate,
+						                                   delay, loss, gre_mtu)
+						if self.tcpdump:
+							# sleep(0.5)
+							fn = os.path.join(self.tcpdump_opts["base_dir"],
+							                  "{}.pcap".format(gretap))
+							self.tcpdump_pids[gretap] = ovs_port_dump(
+								gretap, self.tcpdump_opts["filter"], fn)
 
-		# 				# sleep(0.2)
+						# sleep(0.2)
 
-		# self.gres = new_gres
+		self.gres = new_gres
 
 	def diff_topo(self, new_topo: List[List[Tuple]]):
 		debug("start diff topo")
 		self._diff_local_links(new_topo)
 		self._diff_gre_links(new_topo)
 		if not self.host_found:
-			info("Wait for all links setup")
-			time.sleep(20)
-			# self._do_find_host()
+			time.sleep(5)
+			self._do_find_host()
 			self.host_found = True
 			# setup up tc
 			for _,(link,qos) in enumerate(self.vars["tc"].items()):
 				rate,delay,loss=qos
+				debug("rate {} delay {} loss {}".format(rate, delay, loss))
 				# rate = delay if int(self.config["enable_rate_constraint"]) == 1 else None
 				# delay = delay if int(
 				# 	self.config["enable_delay_constraint"]) == 1 else None
 				# loss = loss if int(self.config["enable_loss_constraint"]) == 1 else None
 
-				# add_tc(link,delay,rate,loss)
+				add_tc(link,delay,rate,loss)
 				debug("Add tc for {} done".format(link))
 
 		debug("diff topo done")
 		self.telemeter=Telemeter(self.local_switch_ids,new_topo,self.config)
 
 	def _set_up_nat(self):
-
 		debug("Setting up nat")
 		os.system("echo '1' > /proc/sys/net/ipv4/ip_forward")
 		intf = self.inetintf
-		# get ip addr of intf
-		# cmd="ip -o -f inet addr show |grep "+intf+" | awk '/scope global/ {print $4}'"
-		# ip=None
-		# try:
-		# 	ip=run_and_get_output(cmd)
-		# except Exception as e:
-		# 	err("cannot get ip address of {}".format(intf))
-		# 	err(str(e))
-		#
-		# warn("if your intf ip address does'nt stay in the same network as redis,some function may not work")
-		#
-		# subnet=get_ipv4net_address(ip)
-		# #change ip route metric
-		# info("change ip route metric")
-		# os.system("ip route add {} dev {} metric 1".format(subnet,intf))
-		# info("change ip route metric done")
+
 		worker_id = self.id
 		nat2_ip = "10.0.0.254"
 		debug("nat out ip {}/16".format(nat2_ip))
-		# os.system("ovs-vsctl add-br nat")
+		os.system("ovs-vsctl add-br nat")
 		# os.system("ip link add nat1 type veth peer name nat2")
 		add_veth("nat1", "nat2")
 		os.system("ifconfig nat2 {}/16 up".format(nat2_ip))
@@ -822,43 +803,46 @@ class TopoBuilder:
 		
 		# 配置入口接入交换机s1
 		# add_veth("inport-s1", "s1-inport")
-		attach_interface_to_sw("s9", "ens38")
-		os.system("ifconfig ens38 up")
-		# os.system("ifconfig s1-inport up")
-		# os.system("ifconfig inport-s1 {}/16 up".format("10.0.0.254"))
-		# os.system("iptables -A FORWARD -o {} -i {} -j ACCEPT".format("inport-s1", "ens38"))
-		# os.system("iptables -A FORWARD -o {} -i {} -j ACCEPT".format("ens38", "inport-s1"))
-		# os.system(
-		# 	"iptables -t nat -A POSTROUTING -s 10.0.0.0/16 -o {} -j MASQUERADE".format("ens38"))
-	
-	
+		attach_interface_to_sw("s24", "enp1s0f0")
+		os.system("ifconfig enp1s0f0 up")
+		# attach_interface_to_sw("s23", "enp1s0f1")
+		# os.system("ifconfig enp1s0f1 up")
+		# attach_interface_to_sw("s22", "enp1s0f2")
+		# os.system("ifconfig enp1s0f2 up")
+		# attach_interface_to_sw("s21", "enp1s0f3")
+		# os.system("ifconfig enp1s0f3 up")
+
+
 
 		# set add link to host
 		# 改成从命令行接受
-		# k = int(self.config["host_per_switch"])
-		# local_switches = self.config["workers"][worker_id]
+		k = int(self.config["host_per_switch"])
+		local_switches = self.config["workers"][worker_id]
+		
+		#配置switch0的虚拟host连接到外网
+		for swid in local_switches:
+			if swid != 0:
+				continue
+			for hostidx in range(k):
+				hostid = swid * k + hostidx
+				hostname = "h{}".format(hostid)
+				hnat = "{}-{}".format(hostname, "nat")
+				nath = "{}-{}".format("nat", hostname)
+				add_veth(hnat, nath)
+				self.nat_links.append(hnat)
+				self.nat_links.append(nath)
+				# set netns
+				os.system("ip link set {} netns {}".format(hnat, hostname))
+				nat_ip = generate_nat_ip(hostid)
+				os.system(
+					"ip netns exec {} ifconfig {} {}/16 up".format(hostname, hnat, nat_ip))
+				# attach port
+				os.system("ovs-vsctl add-port {} {}".format("nat", nath))
+				os.system("ifconfig {} up".format(nath))
 
-		# for swid in local_switches:
-		# 	for hostidx in range(k):
-		# 		hostid = swid * k + hostidx
-		# 		hostname = "h{}".format(hostid)
-		# 		hnat = "{}-{}".format(hostname, "nat")
-		# 		nath = "{}-{}".format("nat", hostname)
-		# 		add_veth(hnat, nath)
-		# 		self.nat_links.append(hnat)
-		# 		self.nat_links.append(nath)
-		# 		# set netns
-		# 		os.system("ip link set {} netns {}".format(hnat, hostname))
-		# 		nat_ip = generate_nat_ip(hostid)
-		# 		os.system(
-		# 			"ip netns exec {} ifconfig {} {}/16 up".format(hostname, hnat, nat_ip))
-		# 		# attach port
-		# 		os.system("ovs-vsctl add-port {} {}".format("nat", nath))
-		# 		os.system("ifconfig {} up".format(nath))
-
-		# 		# set default route
-		# 		os.system(
-		# 			"ip netns exec {} ip route add default via {}".format(hostname, nat2_ip))
+				# set default route
+				os.system(
+					"ip netns exec {} ip route add default via {}".format(hostname, nat2_ip))
 		debug("Setting up nat done")
 
 	def _tear_down_nat(self):
@@ -1021,6 +1005,9 @@ class TopoBuilder:
 	def diff_traffic_mode(self, mode):
 		self.traffic_actor.act(mode)
 
+	def config_traffic_mode(self, configStr):
+		self.traffic_actor.act1(configStr)
+
 	def stop_traffic_actor(self):
 		self.traffic_actor.stop()
 
@@ -1065,9 +1052,8 @@ class TopoBuilder:
 			up_interface(p1)
 			up_interface(p2)
 
-			if is_server:
-				add_tc(p1, bandwidth=band, delay=None)
-				add_tc(p2, bandwidth=band, delay=None)
+			add_tc(p1, bandwidth=band, delay=None)
+			add_tc(p2, bandwidth=band, delay=None)
 
 
 	def start_telemetry(self):
@@ -1078,19 +1064,6 @@ class TopoBuilder:
 		if self.telemeter is not None:
 			self.telemeter.stop()
 
-	def start_classifier_demo(self):
-		if self.classifier_scheduler is not None:
-			self.classifier_scheduler.start()
-			debug("classifier scheduler start")
-			return
-		err("classifier scheduler not initiated")
-
-	def stop_classifier_demo(self):
-		if self.classifier_scheduler is not None:
-			self.classifier_scheduler.stop()
-			debug("classifier scheduler stop")
-			return
-		err("classfifier scheduler not initiated")
 
 if __name__ == '__main__':
 	config = load_json(os.path.join(

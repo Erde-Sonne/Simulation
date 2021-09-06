@@ -84,13 +84,18 @@ traffictimer = None
 
 def cli(topos: List, config: Dict, scheduler: Scheduler2):
 	traffic_started = False
+	obj = {
+			"configStr": ""
+			}
 	while True:
-		os.system("clear")
+		# os.system("clear")
 		try:
 			print("> Available commands:\n"
-			      "> 1.set up local switch\n"
-			      "> 2.set up switch links\n"
-				  "> 3.quit\n"
+			      "> 0.set up local switch\n"
+			      "> 1.set up first topo\n"
+			      "> 2.start traffic actor\n"
+			      "> 3.stop traffic actor\n"
+			      "> 4.quit\n"
 			      "> Press Enter to print this msg")
 
 			command = input(">Input commands:\n").strip()
@@ -99,21 +104,15 @@ def cli(topos: List, config: Dict, scheduler: Scheduler2):
 				continue
 			if not is_digit(command):
 				os.system("clear")
+				info(command)
+				url = "http://{}:{}/traffic3".format(ip, 5000)
+				obj["configStr"] = command
+				start_new_thread_and_run(do_post, [url, obj])
 				continue
 
 			command = int(command)
-			# if command==12:
-			# 	for idx,ip in enumerate(config["manage_ip"]):
-			# 		url="http://{}:{}/classifier".format(ip,5000)
-			# 		start_new_thread_and_run(do_post,[url,{"data":"nothing"}])
-			# 		continue
-			# if command==13:
-			# 	for idx,ip in enumerate(config["manage_ip"]):
-			# 		url="http://{}:{}/classifier".format(ip,5000)
-			# 		start_new_thread_and_run(do_delete,[url])
-			# 		continue
 
-			if command == 1:
+			if command == 0:
 				intfs = config["workers_intf"]
 				# set up local switch
 				for idx, ip in enumerate(config["manage_ip"]):
@@ -124,46 +123,16 @@ def cli(topos: List, config: Dict, scheduler: Scheduler2):
 				# threading.Thread(target=do_post, args=[url, {"config": config, "id": idx,
 				#                                             "intf": intf}]).start()
 				continue
-			if command == 2:
+			if command == 1:
 				for idx, ip in enumerate(config["manage_ip"]):
 					url = "http://{}:{}/topo".format(ip, 5000)
 					# threading.Thread(target=do_post, args=[url, {"topo": topos[0]["topo"]}]).start()
 					start_new_thread_and_run(do_post, [url, {"topo": topos[0]["topo"]}])
 				continue
 
-			# if command == 1:
-			# 	debug("Topo scheduler started")
-			# 	scheduler.start()
-			# 	continue
 
-			# if command == 2:
-			# 	debug("Topo scheduler stoped")
-			# 	scheduler.stop()
-			# 	continue
-
-			# if command == 3:
-			# 	debug("Start telemetry")
-			# 	for idx, ip in enumerate(config["manage_ip"]):
-			# 		url = "http://{}:{}/telemetry".format(ip, 5000)
-			# 		start_new_thread_and_run(do_post, [url, {}])
-			# 	continue
-
-			# if command == 5:
-			# 	for idx, ip in enumerate(config["manage_ip"]):
-			# 		url = "http://{}:{}/traffic".format(ip, 5000)
-			# 		# threading.Thread(target=do_post, args=[url, {}]).start()
-			# 		start_new_thread_and_run(do_post, [url, {}])
-			# 		continue
-
-			# if command == 6:
-			# 	for idx, ip in enumerate(config["manage_ip"]):
-			# 		url = "http://{}:{}/traffic".format(ip, 5000)
-			# 		# threading.Thread(target=do_delete, args=[url]).start()
-			# 		start_new_thread_and_run(do_delete, [url])
-			# 		continue
-
-			if command == 3:
-				scheduler.stop()
+			if command == 4:
+				# scheduler.stop()
 				global traffictimer
 				traffictimer.stop()
 				traffictimer=traffic_timer(config)
@@ -172,25 +141,14 @@ def cli(topos: List, config: Dict, scheduler: Scheduler2):
 					start_new_thread_and_run(do_delete, [url])
 				# threading.Thread(target=do_delete, args=[url]).start()
 				continue
-			# if command == 9:
-			# 	worker_ips = config["manage_ip"]
-			# 	# set up server access point
-			# 	url1 = "http://{}:{}/supplementary".format(worker_ips[0], 5000)
-			# 	start_new_thread_and_run(do_post, [url1, {"server": True}])
-			# 	# threading.Thread(target=do_post, args=[url1, {"server": True}]).start()
 
-			# 	url2 = "http://{}:{}/supplementary".format(worker_ips[0], 5000)
-			# 	# threading.Thread(target=do_post, args=[url2, {"server": False}]).start()
-			# 	start_new_thread_and_run(do_post, [url2, {"server": False}])
-			# 	continue
+			if command == 2:
+				traffictimer.start()
+				continue
 
-			# if command == 10:
-			# 	traffictimer.start()
-			# 	continue
-
-			# if command == 11:
-			# 	traffictimer.stop()
-			# 	continue
+			if command == 3:
+				traffictimer.stop()
+				continue
 
 		except KeyboardInterrupt:
 			# print(">Preparing quit. Clean up")
