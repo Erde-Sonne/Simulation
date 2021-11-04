@@ -490,8 +490,8 @@ class TopoBuilder:
 		vhost_mtu = self.config["vhost_mtu"]
 		for sw_id in self.config["workers"][int(self.id)]:
 			add_ovs(sw_id, controller)
-			# 屏蔽
-			if sw_id in [20, 21, 22, 23, 24]:
+			# 屏蔽 24
+			if sw_id in [24]:
 				continue
 			add_hosts_to_switches(sw_id, k, vhost_mtu, self.tcpdump, self.tcpdump_opts["filter"],
 			                      self.tcpdump_opts["base_dir"])
@@ -596,7 +596,7 @@ class TopoBuilder:
 
 				if -1 not in new_topo[sa_id][sb_id]:
 					# rate, delay, loss, _ = new_topo[sa_id][sb_id]
-					rate, delay, loss, _ = [100, 5, 10, 0]
+					rate, delay, loss, _ = [50, 5, 10, 0]
 					rate = rate if int(self.config["enable_rate_constraint"]) == 1 else None
 					delay = delay if int(
 						self.config["enable_delay_constraint"]) == 1 else None
