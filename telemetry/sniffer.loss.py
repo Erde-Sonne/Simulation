@@ -152,6 +152,8 @@ class Sniffer:
 				self.store.write_loss((u-1,v-1),loss[(u,v)])
 			fixed_link_stats[(v - 1, u - 1)] = loss[(u, v)]
 		# self.store.write_loss((v-1,u-1),loss[(u,v)])
+		
+		debug("packet loss:{}".format(loss))
 
 	def find_port(self, u, v):
 		for path in paths:
@@ -169,7 +171,7 @@ class Sniffer:
 		sniffer_stopped = False
 		recv_vlan = []
 		return_link = []
-		n=1000
+		n=200
 
 		def sniffer_started_cbk():
 			# nonlocal sniffer_lock

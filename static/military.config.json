@@ -98,7 +98,7 @@
   "host_mtu": 1500,
   "gre_mtu": 1458,
   "vhost_mtu": 1420,
-  "controller": "127.0.0.1:6666",
+  "controller": "192.168.1.54:6666",
   "controller_socket_port": 1026,
   "controller_telemetry_port": 1041,
   "enable_delay_constraint": 0,
@@ -113,7 +113,7 @@
     "default": "/home/stack/code/simulation/traffic/gogen/pkts/default"
   },
   "traffic_generator": "/home/stack/code/simulation/traffic/gogen/bin/gogen",
-  "enable_traffic_generator_log": 0,
+  "enable_traffic_generator_log": 1,
   "enable_listener": 0,
   "enable_loss": 0,
   "listener": "/home/stack/code/simulation/traffic/gogen/bin/golisten",
@@ -148,7 +148,7 @@
     3600
   ],
   "topo_port": 1029,
-  "redis_ip":"192.168.1.132",
+  "redis_ip":"192.168.1.135",
   "redis_port":6379,
   "classifier_demo": {
     "binary_file": "/home/stack/code/simulation/traffic/gogen/bin/classifier",
@@ -162,10 +162,10 @@
       [62,63,64],
       [85,85,87]
     ],
-    "redis_ip": "192.168.1.132",
+    "redis_ip": "192.168.1.135",
     "redis_port": 6379,
     "redis_db": 8,
-    "classifier_ip": "192.168.1.132",
+    "classifier_ip": "192.168.1.135",
     "classifier_port": 1052
   }
 }

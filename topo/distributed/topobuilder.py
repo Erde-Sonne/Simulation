@@ -596,7 +596,7 @@ class TopoBuilder:
 
 				if -1 not in new_topo[sa_id][sb_id]:
 					# rate, delay, loss, _ = new_topo[sa_id][sb_id]
-					rate, delay, loss, _ = [50, 5, 10, 0]
+					rate, delay, loss, _ = [50, 0, 25, 0]
 					rate = rate if int(self.config["enable_rate_constraint"]) == 1 else None
 					delay = delay if int(
 						self.config["enable_delay_constraint"]) == 1 else None
